@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "CPlug - Exportador de Chaves",
+  "version": "1.1.0",
+  "description": "Exporta as chaves de integração dos produtos e de seus complementos no ConnectPlug.",
+  "permissions": [],
+  "host_permissions": [
+    "https://connectplug.com.br/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://connectplug.com.br/sistema/produtos*"
+      ],
+      "js": [
+        "xlsx-exporter.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+*.zip
+*.crx
+*.log
+*.tmp
+.env
+.env.*
+!.env.example
+node_modules/
+

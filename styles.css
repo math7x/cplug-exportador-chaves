@@ -1,0 +1,137 @@
+#cplug-key-exporter {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2147483647;
+  width: min(360px, calc(100vw - 32px));
+  overflow: hidden;
+  color: #eaf7f5;
+  background: #172120;
+  border: 1px solid rgba(40, 196, 174, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+#cplug-key-exporter * {
+  box-sizing: border-box;
+}
+
+.cplug-exporter__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  background: #101817;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cplug-exporter--collapsed .cplug-exporter__header {
+  border-bottom: 0;
+}
+
+.cplug-exporter__header strong,
+.cplug-exporter__header span {
+  display: block;
+}
+
+.cplug-exporter__header strong {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.cplug-exporter__header span {
+  margin-top: 2px;
+  color: #a9bfbc;
+  font-size: 12px;
+}
+
+#cplug-key-exporter button {
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#cplug-key-exporter button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.cplug-exporter__collapse {
+  width: 30px;
+  height: 30px;
+  color: #d8ebe8;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 18px !important;
+  line-height: 1;
+}
+
+.cplug-exporter__body {
+  padding: 14px;
+}
+
+.cplug-exporter__status,
+.cplug-exporter__detail {
+  margin: 0;
+}
+
+.cplug-exporter__status {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.cplug-exporter__detail {
+  min-height: 20px;
+  margin-top: 7px;
+  color: #b9cecb;
+  font-size: 12px;
+}
+
+.cplug-exporter__progress {
+  height: 7px;
+  margin-top: 11px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.cplug-exporter__progress[aria-hidden="true"] {
+  display: none;
+}
+
+.cplug-exporter__progress-bar {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #17a991, #31d2ba);
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+
+.cplug-exporter__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cplug-exporter__start,
+.cplug-exporter__download {
+  padding: 9px 13px;
+  color: #06231e;
+  background: #27c2aa;
+}
+
+.cplug-exporter__cancel {
+  padding: 9px 13px;
+  color: #ffffff;
+  background: #bf3e45;
+}
+
+#cplug-key-exporter button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
