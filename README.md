@@ -2,6 +2,16 @@
 
 Extensão para Chrome e Brave que coleta, somente para leitura, as chaves de integração dos produtos e dos complementos no ConnectPlug.
 
+## Visão técnica
+
+- extensão baseada no Manifest V3;
+- paginação automática da listagem de produtos;
+- geração local de planilha Excel;
+- execução restrita ao ambiente do ConnectPlug;
+- fluxo de confirmação e acompanhamento de progresso na própria página.
+
+Tecnologias principais: JavaScript, Chrome Extensions API, HTML e CSS.
+
 ## Como instalar
 
 1. Abra `chrome://extensions` no Chrome ou `brave://extensions` no Brave.
