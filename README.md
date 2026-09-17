@@ -2,6 +2,14 @@
 
 Extensão para Chrome e Brave que coleta, somente para leitura, as chaves de integração dos produtos e dos complementos no ConnectPlug.
 
+## Problema que resolve
+
+As chaves de integração ficam distribuídas entre produtos, complementos e várias páginas do cadastro. Copiar essas informações manualmente é demorado, dificulta auditorias e aumenta o risco de relacionar um complemento ao produto errado.
+
+## Solução desenvolvida
+
+A extensão percorre automaticamente toda a listagem do CPlug, consulta os detalhes de cada produto e reúne as chaves em uma planilha organizada. Isso transforma uma coleta repetitiva em um arquivo pronto para conferência, migração ou integração com outros sistemas de PDV, sem alterar os cadastros de origem.
+
 ## Visão técnica
 
 - extensão baseada no Manifest V3;
@@ -17,7 +25,7 @@ Tecnologias principais: JavaScript, Chrome Extensions API, HTML e CSS.
 1. Abra `chrome://extensions` no Chrome ou `brave://extensions` no Brave.
 2. Ative o **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação**.
-4. Selecione esta pasta: `EXTENSÃO CBUG CADASTRO`.
+4. Selecione a pasta deste projeto.
 5. Se a página de produtos já estiver aberta, atualize-a uma vez.
 
 ## Como usar
