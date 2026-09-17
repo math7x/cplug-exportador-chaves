@@ -35,6 +35,7 @@
         <button type="button" class="cplug-exporter__cancel" hidden>Cancelar</button>
         <button type="button" class="cplug-exporter__download" hidden>Baixar Excel novamente</button>
       </div>
+      <div class="cplug-exporter__author">Desenvolvido por math7x</div>
     </div>
   `;
   document.body.appendChild(panel);

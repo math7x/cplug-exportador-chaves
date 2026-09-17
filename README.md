@@ -46,3 +46,7 @@ A planilha possui cabeçalhos em maiúsculas, fundo preto, texto branco, filtros
 - Os dados não são enviados a nenhum serviço externo.
 - São feitas no máximo três consultas de detalhe ao mesmo tempo para evitar sobrecarga.
 - Se a sessão expirar, entre novamente no ConnectPlug e repita a coleta.
+
+## Autoria
+
+Desenvolvido por [math7x](https://github.com/math7x).
