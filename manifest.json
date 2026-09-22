@@ -1,13 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "CPlug - Exportador de Chaves",
-  "version": "1.1.0",
-  "description": "Exporta as chaves de integração dos produtos e de seus complementos no ConnectPlug.",
+  "name": "CPlug - Integração de Códigos PDV",
+  "version": "2.2.5",
+  "description": "Exporta chaves do ConnectPlug e aplica os códigos PDV no catálogo do Alloy com revisão prévia.",
   "author": "math7x",
-  "permissions": [],
-  "host_permissions": [
-    "https://connectplug.com.br/*"
+  "permissions": [
+    "storage",
+    "tabs"
   ],
+  "host_permissions": [
+    "https://connectplug.com.br/*",
+    "https://parceiros.online.uptecnologias.app.br/*"
+  ],
+  "action": {
+    "default_title": "CPlug - Integração de Códigos PDV",
+    "default_popup": "popup.html"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -19,6 +27,16 @@
       ],
       "css": [
         "styles.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://parceiros.online.uptecnologias.app.br/catalogo*",
+        "https://parceiros.online.uptecnologias.app.br/edicao-complementos*"
+      ],
+      "js": [
+        "up-content.js"
       ],
       "run_at": "document_idle"
     }

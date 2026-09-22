@@ -1,59 +1,106 @@
-# CPlug - Exportador de Chaves
+# CPlug → Alloy | Integração de Códigos PDV
 
-Extensão para Chrome e Brave que coleta, somente para leitura, as chaves de integração dos produtos e dos complementos no ConnectPlug.
+Extensão para Chrome e Brave criada para facilitar a migração e a sincronização dos **códigos PDV do ConnectPlug (CPlug)** com o catálogo do **Alloy**, acessado pelo portal da UP Tecnologias.
 
-## Problema que resolve
+## O problema que esta extensão resolve
 
-As chaves de integração ficam distribuídas entre produtos, complementos e várias páginas do cadastro. Copiar essas informações manualmente é demorado, dificulta auditorias e aumenta o risco de relacionar um complemento ao produto errado.
+O ConnectPlug possui uma **Chave de Integração** para cada produto e para cada complemento:
 
-## Solução desenvolvida
+- produtos pai usam códigos como `prod-144407-1`;
+- complementos usam códigos como `att-144407-1-124`.
 
-A extensão percorre automaticamente toda a listagem do CPlug, consulta os detalhes de cada produto e reúne as chaves em uma planilha organizada. Isso transforma uma coleta repetitiva em um arquivo pronto para conferência, migração ou integração com outros sistemas de PDV, sem alterar os cadastros de origem.
+Para integrar corretamente o catálogo no Alloy, essas chaves precisam ser colocadas no campo **Cód. PDV** de cada cadastro correspondente. Fazer isso manualmente exige abrir e conferir muitos produtos, identificar a qual produto pai cada complemento pertence, copiar cada chave e colá-la individualmente no Alloy.
 
-## Visão técnica
+Esse trabalho fica especialmente difícil porque:
 
-- extensão baseada no Manifest V3;
-- paginação automática da listagem de produtos;
-- geração local de planilha Excel;
-- execução restrita ao ambiente do ConnectPlug;
-- fluxo de confirmação e acompanhamento de progresso na própria página.
+- uma loja pode possuir centenas de produtos e complementos;
+- complementos com o mesmo nome podem existir em produtos pai diferentes;
+- o código do complemento deve ser colocado no campo individual correto, não no campo coletivo do grupo;
+- nomes podem ter pequenas diferenças entre o CPlug e o Alloy;
+- um código colado no produto errado pode gerar uma integração incorreta;
+- conferir o que já está certo e o que ainda precisa ser preenchido consome muito tempo.
 
-Tecnologias principais: JavaScript, Chrome Extensions API, HTML e CSS.
+## O que a extensão faz
 
-## Como instalar
+A extensão transforma esse processo em um fluxo assistido:
 
-1. Abra `chrome://extensions` no Chrome ou `brave://extensions` no Brave.
+1. percorre automaticamente todas as páginas de produtos do ConnectPlug;
+2. coleta as chaves dos produtos pai e de seus complementos;
+3. gera uma planilha organizada para servir como base da integração;
+4. lê os produtos e complementos existentes no catálogo do Alloy;
+5. compara os nomes e sugere o código PDV correspondente;
+6. separa itens corretos, correspondências exatas, aproximações e itens que exigem atenção;
+7. permite pesquisar manualmente um complemento somente dentro do respectivo produto pai;
+8. aplica apenas os itens selecionados e confere o resultado depois do salvamento.
+
+Assim, a planilha não substitui o catálogo do Alloy: a revisão sempre parte dos itens realmente cadastrados no Alloy, usando os dados exportados do CPlug apenas para localizar o código correto.
+
+## Instalação
+
+1. Abra `chrome://extensions` ou `brave://extensions`.
 2. Ative o **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação**.
-4. Selecione a pasta deste projeto.
-5. Se a página de produtos já estiver aberta, atualize-a uma vez.
+4. Selecione a pasta `EXTENSÃO CBUG CADASTRO`.
+5. Ao atualizar uma versão já carregada, clique no botão de recarregar da extensão e atualize as páginas abertas.
 
-## Como usar
+## 1. Exportar no ConnectPlug
 
-1. Entre normalmente no ConnectPlug.
-2. Abra `https://connectplug.com.br/sistema/produtos`.
-3. No painel **Exportar chaves**, clique em **Coletar chaves**.
-4. Leia a confirmação e clique em **OK**.
-5. Aguarde o progresso. A página deve permanecer aberta durante a coleta.
-6. Ao terminar, a extensão baixa o arquivo `chaves-integracao-cplug-AAAA-MM-DD.xlsx`.
+1. Abra `https://connectplug.com.br/sistema/produtos`.
+2. No painel **Exportar chaves**, clique em **Coletar chaves**.
+3. Confirme e aguarde. A extensão percorre todas as páginas e baixa `chaves-integracao-cplug-AAAA-MM-DD.xlsx`.
 
-O arquivo Excel percorre todas as páginas da listagem e contém:
+O Excel contém:
 
-- Nome produto pai
-- Chave de integração do produto pai
-- Nome do complemento
-- Chave de integração do complemento
+- NOME PRODUTO PAI
+- CHAVE DE INTEGRAÇÃO DO PRODUTO PAI
+- NOME DO COMPLEMENTO
+- CHAVE DE INTEGRAÇÃO DO COMPLEMENTO
 
-Produtos sem complementos também são incluídos, com as duas últimas colunas vazias.
+## 2. Revisar e aplicar no Alloy
 
-A planilha possui cabeçalhos em maiúsculas, fundo preto, texto branco, filtros, primeira linha congelada, bordas e larguras de coluna ajustadas.
+1. Na loja correta, deixe abertas e atualizadas estas duas telas:
+   - `https://parceiros.online.uptecnologias.app.br/catalogo`
+   - `https://parceiros.online.uptecnologias.app.br/edicao-complementos`
+2. Clique no ícone da extensão.
+3. Selecione o Excel exportado no ConnectPlug.
+4. Clique em **Verificar catálogo e sugerir códigos**.
+5. Confira a tela de revisão. A listagem parte dos itens reais do Alloy; o Excel é usado apenas para localizar o código correspondente. Correspondências exatas já vêm selecionadas; aproximadas exigem seleção manual.
+6. Clique em **Aplicar selecionados** e confirme. O botão aplica somente os itens marcados na aba aberta.
 
-## Segurança e limites
+### Escolha manual do código
 
-- A extensão faz apenas consultas `GET`; não salva nem altera produtos.
-- Os dados não são enviados a nenhum serviço externo.
-- São feitas no máximo três consultas de detalhe ao mesmo tempo para evitar sobrecarga.
-- Se a sessão expirar, entre novamente no ConnectPlug e repita a coleta.
+Cada linha que ainda não está correta tem um campo de busca:
+
+- **Produtos pai:** busca em **todos** os produtos pai do Excel, por nome ou pelo código `prod-`.
+- **Complementos:** mostra **somente os complementos do produto pai** daquele item no Excel. O produto pai é localizado primeiro pelo nome exibido na UP; o código `prod-` é usado apenas como apoio quando o nome mudou.
+- Escolher um item da lista ou colar um código aplica a escolha na hora. Se você digitar, confirme com **Enter** ou saindo do campo.
+- Um código `att-` de outro produto pai é sempre recusado, evitando aplicar um complemento no produto errado.
+- Você pode marcar a linha primeiro e escolher o código depois. O botão de aplicar fica bloqueado enquanto houver linha marcada sem código.
+- As escolhas ficam salvas se você recarregar a tela de revisão.
+
+Quando o código atual do cadastro existe no Excel (para complementos, dentro do mesmo produto pai), o item é considerado correto. Se o nome no Excel for diferente, a linha mostra um aviso e o campo de busca continua disponível.
+
+## Proteções incluídas
+
+- bloqueia a operação quando Catálogo e Complementos pertencem a lojas diferentes;
+- confere novamente a loja e o nome de cada cadastro imediatamente antes de salvar;
+- aplica complementos somente em `Cód. PDV` da linha individual, nunca no campo coletivo superior;
+- relaciona cada complemento pelo nome dele e pelo produto pai no Alloy;
+- limita a busca manual aos complementos daquele mesmo produto pai;
+- rejeita códigos de complementos pertencentes a outro produto pai;
+- não aplica correspondências ambíguas, ausentes ou com conflito de códigos no Excel;
+- mostra todos os resultados para revisão antes de qualquer salvamento;
+- recarrega e verifica os códigos gravados após a resposta do portal.
+
+## Resultado esperado
+
+O objetivo é reduzir um trabalho repetitivo de copiar e colar códigos um por um, sem perder a conferência humana. A extensão acelera a localização e o preenchimento dos códigos PDV, mas mantém uma tela de revisão para que nenhuma correspondência duvidosa seja aplicada silenciosamente.
+
+## Observações
+
+- A extensão lê arquivos `.xlsx` com as quatro colunas esperadas. O formato gerado por ela é o recomendado.
+- Se as páginas do portal estavam abertas durante a atualização da extensão, atualize as duas antes de analisar.
+- Produtos e complementos que já possuem o código correto são identificados e não são alterados.
 
 ## Autoria
 

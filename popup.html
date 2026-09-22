@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>CPlug PDV Sync</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; width: 320px; margin: 0; padding: 14px; color: #e9e9ec; background: #17181c; }
+  h1 { font-size: 15px; margin: 0 0 4px; color: #e9e9ec; }
+  p.sub { font-size: 12px; color: #9a9aa5; margin: 0 0 14px; line-height: 1.4; }
+  .step { margin-bottom: 14px; }
+  .step label { display:block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #e9e9ec; }
+  input[type=file] { font-size: 12px; width: 100%; color: #e9e9ec; }
+  button { width: 100%; padding: 9px 10px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #btnStart { background: #ff4757; color: #fff; }
+  #btnStart:disabled { background: #3a3d44; color: #85868d; cursor: not-allowed; }
+  #btnPages { margin-top: 8px; border: 1px solid #3a3d44; background: #24262b; color: #e9e9ec; }
+  #btnPages:hover { background: #2b2e34; }
+  .status { font-size: 12px; margin-top: 8px; padding: 8px; border-radius: 6px; background: #24262b; color: #e9e9ec; line-height: 1.4; }
+  .status.ok { background: #1e3c2c; color: #8fe0b0; }
+  .status.err { background: #4a2020; color: #ff8790; }
+  .hint { font-size: 11px; color: #85868d; margin-top: 6px; line-height: 1.4; }
+  .divider { border-top: 1px solid #2c2e34; margin: 14px 0; }
+  .author-credit { margin-top: 14px; color: #666873; font-size: 10px; text-align: center; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+  <h1>CPlug PDV Sync</h1>
+  <p class="sub">Casa as chaves do ConnectPlug com o catálogo da UP Tecnologias e revisa antes de aplicar.</p>
+
+  <div class="step">
+    <label>1. Planilha exportada do ConnectPlug (.xlsx)</label>
+    <input type="file" id="fileInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+    <div id="fileStatus" class="status" style="display:none;"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="step">
+    <label>2. Abra Catálogo e Edição de complementos na mesma loja</label>
+    <button id="btnStart" disabled>Verificar catálogo e sugerir códigos</button>
+    <button id="btnPages" type="button">Abrir as duas telas necessárias</button>
+    <div class="hint">Nada é escrito nesta etapa — só é feita uma leitura e um relatório de sugestões para você revisar.</div>
+  </div>
+
+  <div id="runStatus" class="status" style="display:none;"></div>
+  <div class="author-credit">Desenvolvido por math7x</div>
+  <script src="xlsx-exporter.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

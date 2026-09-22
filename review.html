@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>CPlug PDV Sync — Revisão</title>
+<link rel="stylesheet" href="review.css" />
+</head>
+<body>
+  <header id="rv-header">
+    <div>
+      <h1>CPlug PDV Sync — Revisão</h1>
+      <p id="rv-meta" class="rv-muted">Carregando...</p>
+    </div>
+    <div id="rv-actions">
+      <button id="rv-btn-export" class="rv-btn-safe">Exportar CSV</button>
+      <div id="rv-apply-wrap">
+        <button id="rv-btn-apply" disabled>⚠️ Aplicar selecionados</button>
+        <div class="rv-apply-hint">escreve e salva no catálogo da UP</div>
+      </div>
+    </div>
+  </header>
+
+  <div id="rv-summary-bar"></div>
+
+  <nav id="rv-tabs">
+    <button type="button" class="rv-tab-btn is-active" data-tab="complement">Complementos</button>
+    <button type="button" class="rv-tab-btn" data-tab="parent">Produtos pai</button>
+    <button type="button" class="rv-tab-btn" data-tab="attention">Exigem atenção</button>
+  </nav>
+
+  <main id="rv-main">
+    <p id="rv-empty" class="rv-muted" style="display:none;">
+      Nenhum dado encontrado. Volte ao popup da extensão e execute a análise novamente.
+    </p>
+  </main>
+
+  <div id="rv-final-summary" style="display:none;"></div>
+
+  <div id="rv-progress" hidden>
+    <div class="rv-progress-card">
+      <div class="rv-spinner"></div>
+      <strong id="rv-progress-title">Aplicando códigos...</strong>
+      <span id="rv-progress-detail">Não feche as telas do portal.</span>
+    </div>
+  </div>
+
+  <script src="review.js"></script>
+</body>
+</html>

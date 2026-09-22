@@ -53,6 +53,146 @@
     return createZip(files);
   }
 
+  async function read(file) {
+    if (!(file instanceof Blob)) throw new Error("Selecione um arquivo Excel válido.");
+    const entries = await readZipEntries(new Uint8Array(await file.arrayBuffer()));
+    const sheetBytes = entries.get("xl/worksheets/sheet1.xml");
+    if (!sheetBytes) throw new Error("A primeira planilha do arquivo não foi encontrada.");
+
+    const sharedStrings = parseSharedStrings(entries.get("xl/sharedStrings.xml"));
+    const values = parseWorksheet(sheetBytes, sharedStrings);
+    if (!values.length) throw new Error("A planilha está vazia.");
+
+    const expectedHeaders = [
+      "nome produto pai",
+      "chave de integracao do produto pai",
+      "nome do complemento",
+      "chave de integracao do complemento"
+    ];
+    const headers = values[0].map(normalizeHeader);
+    const positions = expectedHeaders.map((header) => headers.indexOf(header));
+    if (positions.some((position) => position < 0)) {
+      throw new Error("Use a planilha exportada pela extensão. As quatro colunas esperadas não foram encontradas.");
+    }
+
+    const rows = values.slice(1).map((row) => ({
+      parentName: cleanCell(row[positions[0]]),
+      parentKey: cleanCell(row[positions[1]]),
+      complementName: cleanCell(row[positions[2]]),
+      complementKey: cleanCell(row[positions[3]])
+    })).filter((row) => row.parentName && row.parentKey);
+
+    if (!rows.length) throw new Error("Nenhum produto com chave de integração foi encontrado.");
+    return rows;
+  }
+
+  async function readZipEntries(bytes) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let endOffset = -1;
+    const minimum = Math.max(0, bytes.length - 65_557);
+    for (let offset = bytes.length - 22; offset >= minimum; offset -= 1) {
+      if (view.getUint32(offset, true) === 0x06054b50) {
+        endOffset = offset;
+        break;
+      }
+    }
+    if (endOffset < 0) throw new Error("O arquivo não é um Excel .xlsx válido.");
+
+    const fileCount = view.getUint16(endOffset + 10, true);
+    let offset = view.getUint32(endOffset + 16, true);
+    const entries = new Map();
+
+    for (let index = 0; index < fileCount; index += 1) {
+      if (view.getUint32(offset, true) !== 0x02014b50) {
+        throw new Error("A estrutura interna do Excel está inválida.");
+      }
+      const method = view.getUint16(offset + 10, true);
+      const compressedSize = view.getUint32(offset + 20, true);
+      const nameLength = view.getUint16(offset + 28, true);
+      const extraLength = view.getUint16(offset + 30, true);
+      const commentLength = view.getUint16(offset + 32, true);
+      const localOffset = view.getUint32(offset + 42, true);
+      const name = new TextDecoder().decode(bytes.slice(offset + 46, offset + 46 + nameLength));
+
+      if (view.getUint32(localOffset, true) !== 0x04034b50) {
+        throw new Error("Uma parte interna do Excel está corrompida.");
+      }
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+      entries.set(name, await decompressZipEntry(compressed, method));
+      offset += 46 + nameLength + extraLength + commentLength;
+    }
+    return entries;
+  }
+
+  async function decompressZipEntry(bytes, method) {
+    if (method === 0) return bytes;
+    if (method !== 8 || typeof DecompressionStream === "undefined") {
+      throw new Error("Este Excel usa uma compactação não suportada. Exporte novamente pela extensão.");
+    }
+    try {
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch {
+      throw new Error("Não foi possível descompactar o Excel. Exporte novamente pela extensão.");
+    }
+  }
+
+  function parseSharedStrings(bytes) {
+    if (!bytes) return [];
+    const document = parseXml(bytes);
+    return [...document.getElementsByTagNameNS("*", "si")].map((item) =>
+      [...item.getElementsByTagNameNS("*", "t")].map((text) => text.textContent || "").join("")
+    );
+  }
+
+  function parseWorksheet(bytes, sharedStrings) {
+    const document = parseXml(bytes);
+    const rows = [];
+    for (const rowElement of document.getElementsByTagNameNS("*", "row")) {
+      const row = [];
+      let fallbackColumn = 0;
+      for (const cell of rowElement.getElementsByTagNameNS("*", "c")) {
+        const reference = cell.getAttribute("r") || "";
+        const letters = reference.match(/^[A-Z]+/i)?.[0];
+        const column = letters ? columnNumber(letters) - 1 : fallbackColumn;
+        fallbackColumn = column + 1;
+        const type = cell.getAttribute("t");
+        const inline = [...cell.getElementsByTagNameNS("*", "is")]
+          .flatMap((item) => [...item.getElementsByTagNameNS("*", "t")])
+          .map((text) => text.textContent || "").join("");
+        const raw = cell.getElementsByTagNameNS("*", "v")[0]?.textContent || "";
+        row[column] = type === "inlineStr" ? inline
+          : type === "s" ? (sharedStrings[Number(raw)] ?? "")
+          : raw;
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function parseXml(bytes) {
+    const document = new DOMParser().parseFromString(new TextDecoder().decode(bytes), "application/xml");
+    if (document.getElementsByTagName("parsererror").length) {
+      throw new Error("Uma parte interna do Excel não pôde ser lida.");
+    }
+    return document;
+  }
+
+  function columnNumber(letters) {
+    return [...letters.toUpperCase()].reduce((value, letter) => value * 26 + letter.charCodeAt(0) - 64, 0);
+  }
+
+  function cleanCell(value) {
+    return String(value ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  function normalizeHeader(value) {
+    return cleanCell(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
   function worksheetXml(values, lastRow) {
     const rowsXml = values.map((row, rowIndex) => {
       const excelRow = rowIndex + 1;
@@ -323,5 +463,5 @@
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${value.replace(/>\s+</g, "><").trim()}`;
   }
 
-  window.CPlugXlsx = Object.freeze({ build, download });
+  window.CPlugXlsx = Object.freeze({ build, download, read });
 })();
