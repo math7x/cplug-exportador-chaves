@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "CPlug - Integração de Códigos PDV",
-  "version": "2.2.5",
-  "description": "Exporta chaves do ConnectPlug e aplica os códigos PDV no catálogo do Alloy com revisão prévia.",
+  "version": "2.3.6",
+  "description": "Exporta chaves do ConnectPlug e aplica os códigos PDV no Alloy/UP ou iFood com revisão prévia.",
   "author": "math7x",
   "permissions": [
     "storage",
@@ -10,7 +10,8 @@
   ],
   "host_permissions": [
     "https://connectplug.com.br/*",
-    "https://parceiros.online.uptecnologias.app.br/*"
+    "https://parceiros.online.uptecnologias.app.br/*",
+    "https://portal.ifood.com.br/*"
   ],
   "action": {
     "default_title": "CPlug - Integração de Códigos PDV",
@@ -37,6 +38,18 @@
       ],
       "js": [
         "up-content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://portal.ifood.com.br/menu/list/pdv*"
+      ],
+      "js": [
+        "ifood-content.js"
+      ],
+      "css": [
+        "styles.css"
       ],
       "run_at": "document_idle"
     }

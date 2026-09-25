@@ -2,13 +2,20 @@
   "use strict";
 
   const PARENT_CODE_PATTERN = /^prod-[a-z0-9_-]+$/i;
-  const TARGET_ORIGIN = "https://parceiros.online.uptecnologias.app.br";
+  const ALLOY_ORIGIN = "https://parceiros.online.uptecnologias.app.br";
+  const IFOOD_PDV_URL = "https://portal.ifood.com.br/menu/list/pdv";
   const fileInput = document.getElementById("fileInput");
+  const platformSelect = document.getElementById("platformSelect");
   const fileStatus = document.getElementById("fileStatus");
   const analyzeButton = document.getElementById("btnStart");
   const openPagesButton = document.getElementById("btnPages");
+  const platformHint = document.getElementById("platformHint");
+  const openStepLabel = document.getElementById("openStepLabel");
   const runStatus = document.getElementById("runStatus");
   let sourceRows = null;
+
+  updatePlatformTexts();
+  platformSelect.addEventListener("change", updatePlatformTexts);
 
   fileInput.addEventListener("change", async () => {
     sourceRows = null;
@@ -30,20 +37,25 @@
   });
 
   openPagesButton.addEventListener("click", async () => {
-    await Promise.all([
-      chrome.tabs.create({ url: `${TARGET_ORIGIN}/catalogo`, active: true }),
-      chrome.tabs.create({ url: `${TARGET_ORIGIN}/edicao-complementos`, active: false })
-    ]);
+    if (platformSelect.value === "ifood") {
+      await chrome.tabs.create({ url: IFOOD_PDV_URL, active: true });
+    } else {
+      await Promise.all([
+        chrome.tabs.create({ url: `${ALLOY_ORIGIN}/catalogo`, active: true }),
+        chrome.tabs.create({ url: `${ALLOY_ORIGIN}/edicao-complementos`, active: false })
+      ]);
+    }
     window.close();
   });
 
   analyzeButton.addEventListener("click", async () => {
     analyzeButton.disabled = true;
     try {
-      showStatus(runStatus, "Lendo a planilha e conferindo as duas telas da loja…");
+      const platform = platformSelect.value;
+      showStatus(runStatus, platform === "ifood" ? "Lendo a planilha e conferindo o iFood…" : "Lendo a planilha e conferindo as duas telas da loja…");
       sourceRows ||= await window.CPlugXlsx.read(fileInput.files[0]);
-      const pair = await findMatchingStorePair();
-      const plan = buildPlan(sourceRows, pair);
+      const target = platform === "ifood" ? await findIfoodTarget() : await findMatchingStorePair();
+      const plan = buildPlan(sourceRows, target);
       await chrome.storage.local.set({ cplugPdvPlan: plan });
       await chrome.tabs.create({ url: chrome.runtime.getURL("review.html") });
       window.close();
@@ -55,7 +67,7 @@
 
   async function findMatchingStorePair() {
     const tabs = await chrome.tabs.query({
-      url: [`${TARGET_ORIGIN}/catalogo*`, `${TARGET_ORIGIN}/edicao-complementos*`]
+      url: [`${ALLOY_ORIGIN}/catalogo*`, `${ALLOY_ORIGIN}/edicao-complementos*`]
     });
     const scans = [];
     for (const tab of tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))) {
@@ -81,8 +93,32 @@
     const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const preferred = pairs.find((group) => [...group.catalog, ...group.complements].some((scan) => scan.tab.id === activeTab?.id)) || pairs[0];
     return {
+      platform: "alloy",
       catalog: preferred.catalog[0],
       complements: preferred.complements[0]
+    };
+  }
+
+  async function findIfoodTarget() {
+    const tabs = await chrome.tabs.query({ url: "https://portal.ifood.com.br/menu/list/pdv*" });
+    const scans = [];
+    for (const tab of tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))) {
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, { type: "CPLUG_IFOOD_SCAN" });
+        if (response?.ok) scans.push({ tab, data: response.data });
+      } catch {
+        // A tela pode ter sido aberta antes da atualização da extensão.
+      }
+    }
+    if (!scans.length) {
+      throw new Error("Não encontrei a tela Cardápio > PDV do iFood aberta. Abra essa tela, atualize a página e tente de novo.");
+    }
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const preferred = scans.find((scan) => scan.tab.id === activeTab?.id) || scans[0];
+    return {
+      platform: "ifood",
+      catalog: preferred,
+      complements: preferred
     };
   }
 
@@ -101,25 +137,30 @@
       (option) => `${option.parentCode.toLowerCase()}|${normalize(option.name)}|${option.code.toLowerCase()}`
     ).map((option, id) => ({ id, ...option }));
 
-    const parentMatches = matchParents(parentOptions, pair.catalog.data.records);
-    const parentCodeByName = buildParentCodeIndex(pair.catalog.data.records);
+    const platform = pair.platform || "alloy";
+    const catalogRecords = platform === "ifood" ? pair.catalog.data.parentRecords : pair.catalog.data.records;
+    const complementRecords = platform === "ifood" ? pair.catalog.data.complementRecords : pair.complements.data.records;
+    const parentMatches = matchParents(parentOptions, catalogRecords);
+    const parentCodeByName = buildParentCodeIndex(catalogRecords);
     // Complementos cujo produto pai ainda não tem código PDV preenchido no
     // Catálogo ficam fora da revisão: primeiro se preenche o pai.
-    const complementTargets = pair.complements.data.records.filter((record) => parentCodeByName.has(normalize(record.parentName)));
-    const skippedNoParentCode = pair.complements.data.records.length - complementTargets.length;
+    const complementTargets = complementRecords.filter((record) => parentCodeByName.has(normalize(record.parentName)));
+    const skippedNoParentCode = complementRecords.length - complementTargets.length;
     const complementMatches = matchComplements(complementOptions, parentOptions, parentCodeByName, complementTargets);
 
     const storeId = pair.catalog.data.storeId || pair.complements.data.storeId || "";
     const storeName = pair.catalog.data.storeName || pair.complements.data.storeName;
     return {
       version: 3,
+      platform,
       createdAt: new Date().toISOString(),
       fileName: fileInput.files[0].name,
       storeId,
       storeName,
       tabs: {
         catalog: { id: pair.catalog.tab.id, url: pair.catalog.data.url },
-        complements: { id: pair.complements.tab.id, url: pair.complements.data.url }
+        complements: { id: pair.complements.tab.id, url: pair.complements.data.url },
+        ifood: platform === "ifood" ? { id: pair.catalog.tab.id, url: pair.catalog.data.url } : null
       },
       sourceCount: rows.length,
       skippedNoParentCode,
@@ -261,6 +302,9 @@
       targetName: target.name,
       targetParent: target.parentName || "",
       targetGroup: target.groupName || "",
+      inputId: target.inputId || "",
+      itemid: target.itemid || "",
+      optionid: target.optionid || "",
       currentCode: target.currentCode || "",
       score: 100,
       status: "correct",
@@ -290,10 +334,42 @@
 
   function targetNameVariants(target) {
     const name = cleanText(typeof target === "string" ? target : target?.name);
-    const group = cleanText(target?.groupName);
+    const group = cleanGroupName(target?.groupName);
     const variants = [name];
-    if (group && normalize(group) !== normalize(name)) variants.push(`${group} ${name}`);
+    if (group && normalize(group) !== normalize(name)) {
+      variants.push(`${group} ${name}`);
+      for (const alias of groupAliases(group)) variants.push(`${alias} ${name}`);
+      const family = groupFamily(group);
+      if (family && normalize(family) !== normalize(group)) {
+        variants.push(`${family} ${name}`);
+        for (const alias of groupAliases(family)) variants.push(`${alias} ${name}`);
+      }
+    }
     return uniqueBy(variants.filter(Boolean), normalize);
+  }
+
+  function cleanGroupName(value) {
+    return cleanText(value).replace(/\b(OPCIONAL|OBRIGAT[ÓO]RIO|DISPON[IÍ]VEL|INDISPON[IÍ]VEL)\b/gi, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function groupFamily(group) {
+    const normalized = normalize(group);
+    if (/\bADICIONAIS?\b/.test(normalized)) return "Adicionais";
+    if (/\bEXTRAS?\b/.test(normalized)) return "Extras";
+    if (/\bBORDAS?\b/.test(normalized)) return "Bordas";
+    if (/\bSABORES?\b/.test(normalized)) return "Sabores";
+    if (/\bMOLHOS?\b/.test(normalized)) return "Molhos";
+    return "";
+  }
+
+  function groupAliases(group) {
+    const normalized = normalize(group);
+    const aliases = [];
+    if (/\bADICIONAIS\b/.test(normalized)) aliases.push(cleanText(group).replace(/\bAdicionais\b/gi, "Adicional"));
+    if (/\bADICIONAL\b/.test(normalized)) aliases.push(cleanText(group).replace(/\bAdicional\b/gi, "Adicionais"));
+    if (/\bEXTRAS\b/.test(normalized)) aliases.push(cleanText(group).replace(/\bExtras\b/gi, "Extra"));
+    if (/\bEXTRA\b/.test(normalized)) aliases.push(cleanText(group).replace(/\bExtra\b/gi, "Extras"));
+    return uniqueBy(aliases, normalize);
   }
 
   function targetNameMatchesSource(target, sourceName) {
@@ -325,6 +401,9 @@
       targetName: target.name,
       targetParent: target.parentName || "",
       targetGroup: target.groupName || "",
+      inputId: target.inputId || "",
+      itemid: target.itemid || "",
+      optionid: target.optionid || "",
       currentCode: target.currentCode || "",
       score: best ? Math.round(best.score * 100) : 0,
       status: matchStatus,
@@ -374,5 +453,17 @@
     element.style.display = "block";
     element.textContent = message;
     element.className = `status${tone ? ` ${tone}` : ""}`;
+  }
+
+  function updatePlatformTexts() {
+    if (platformSelect.value === "ifood") {
+      platformHint.textContent = "No iFood, deixe aberta a tela Cardápio > PDV.";
+      openStepLabel.textContent = "3. Abra o iFood e faça a leitura";
+      openPagesButton.textContent = "Abrir iFood PDV";
+    } else {
+      platformHint.textContent = "No Alloy, deixe abertas Catálogo e Edição de complementos na mesma loja.";
+      openStepLabel.textContent = "3. Abra as telas do Alloy e faça a leitura";
+      openPagesButton.textContent = "Abrir telas do Alloy";
+    }
   }
 })();

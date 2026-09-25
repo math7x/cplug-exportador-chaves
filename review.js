@@ -31,7 +31,9 @@
     plan.parentOptions ||= [];
     plan.complementOptions ||= [];
     matchesById = new Map(plan.matches.map((match) => [match.id, match]));
-    meta.textContent = `${plan.storeName} • ${plan.fileName} • ${plan.parentOptions.length} produtos pai e ${plan.complementOptions.length} complementos no Excel • ${plan.skippedNoParentCode || 0} complemento(s) ocultos por produto pai sem código PDV`;
+    const platformName = plan.platform === "ifood" ? "iFood" : "Alloy/UP";
+    meta.textContent = `${platformName} • ${plan.storeName} • ${plan.fileName} • ${plan.parentOptions.length} produtos pai e ${plan.complementOptions.length} complementos no Excel • ${plan.skippedNoParentCode || 0} complemento(s) ocultos por produto pai sem código PDV`;
+    document.querySelector(".rv-apply-hint").textContent = plan.platform === "ifood" ? "escreve e salva no cardápio do iFood" : "escreve e salva no catálogo da UP";
     bindEvents();
     render();
   }
@@ -135,8 +137,9 @@
 
   function renderSummary() {
     const count = (fn) => plan.matches.filter(fn).length;
+    const targetLabel = plan.platform === "ifood" ? "itens do iFood analisados" : "itens da UP analisados";
     summary.innerHTML = [
-      stat(plan.matches.length, "itens da UP analisados"),
+      stat(plan.matches.length, targetLabel),
       stat(count((match) => match.selected && canApply(match)), "selecionadas"),
       stat(count((match) => ["correct", "applied"].includes(match.status)), "já corretas / aplicadas"),
       stat(count((match) => match.status === "exact"), "correspondências exatas"),
@@ -204,7 +207,7 @@
         <table class="rv-table">
           <thead><tr>
             <th><input class="rv-check-all" type="checkbox" data-ids="${ids}" ${checked} ${selectable.length ? "" : "disabled"} aria-label="Selecionar esta seção"></th>
-            <th>Tipo</th><th>Item no catálogo da UP</th><th>Correspondência no Excel</th><th>Código atual</th><th>Novo código PDV</th><th>Resultado</th>
+            <th>Tipo</th><th>Item no catálogo</th><th>Correspondência no Excel</th><th>Código atual</th><th>Novo código PDV</th><th>Resultado</th>
           </tr></thead>
           <tbody>${matches.map((match) => rowHtml(match, datalists)).join("")}</tbody>
         </table>
@@ -214,13 +217,14 @@
 
   function rowHtml(match, datalists) {
     const targetParent = match.type === "complement" ? `<div class="rv-parent-code">Produto pai: ${escapeHtml(match.targetParent)}</div>` : "";
+    const targetGroup = match.type === "complement" && match.targetGroup ? `<div class="rv-parent-code">Opção: ${escapeHtml(match.targetGroup)}</div>` : "";
     const editable = isEditable(match);
     const current = match.currentCode ? escapeHtml(match.currentCode) : '<span class="rv-muted">vazio</span>';
     const canSelect = canApply(match);
     return `<tr data-row="${match.id}">
       <td><input class="rv-check" type="checkbox" data-id="${match.id}" ${match.selected && canSelect ? "checked" : ""} ${canSelect ? "" : "disabled"}></td>
       <td><span class="rv-type-badge">${match.type === "parent" ? "Produto pai" : "Complemento"}</span></td>
-      <td class="rv-item-name"><strong>${escapeHtml(match.targetName)}</strong>${targetParent}</td>
+      <td class="rv-item-name"><strong>${escapeHtml(match.targetName)}</strong>${targetParent}${targetGroup}</td>
       <td class="rv-item-name rv-source-cell">
         <div class="rv-source-content">${sourceHtml(match)}</div>
         ${editable ? searchHtml(match, datalistId(match, datalists)) : ""}
@@ -409,20 +413,25 @@
     const complements = selected.filter((match) => match.type === "complement");
     if (!selected.length) return;
     const manual = selected.filter((match) => match.status === "manual").length;
+    const platformText = plan.platform === "ifood" ? "cardápio do iFood" : "catálogo da UP Tecnologias";
     const confirmed = window.confirm(
-      `Isso vai escrever e salvar ${selected.length} código${selected.length === 1 ? "" : "s"} no catálogo da UP Tecnologias.\n\nProdutos pai: ${parents.length}\nComplementos individuais: ${complements.length}\nEscolhidos manualmente: ${manual}\nLoja: ${plan.storeName}\n\nConfirma que quer aplicar agora?`
+      `Isso vai escrever e salvar ${selected.length} código${selected.length === 1 ? "" : "s"} no ${platformText}.\n\nProdutos pai: ${parents.length}\nComplementos individuais: ${complements.length}\nEscolhidos manualmente: ${manual}\nLoja: ${plan.storeName}\n\nConfirma que quer aplicar agora?`
     );
     if (!confirmed) return;
 
     setProgress(true, "Preparando alterações...", "As telas serão conferidas novamente antes de salvar.");
     const completed = [];
     try {
-      if (parents.length) {
+      if (plan.platform === "ifood") {
+        setProgress(true, "Salvando no iFood...", `${selected.length} campos PDV.`);
+        await applyPage("ifood", selected);
+        completed.push(...selected);
+      } else if (parents.length) {
         setProgress(true, "Salvando produtos pai...", `${parents.length} códigos no Catálogo.`);
         await applyPage("catalog", parents);
         completed.push(...parents);
       }
-      if (complements.length) {
+      if (plan.platform !== "ifood" && complements.length) {
         setProgress(true, "Salvando complementos...", `${complements.length} campos Cód. PDV individuais.`);
         await applyPage("complements", complements);
         completed.push(...complements);
@@ -452,14 +461,30 @@
   }
 
   async function applyPage(pageType, matches) {
-    const tabId = plan.tabs[pageType].id;
+    const tabId = pageType === "ifood" ? plan.tabs.ifood.id : plan.tabs[pageType].id;
     try {
       await chrome.tabs.get(tabId);
     } catch {
+      if (pageType === "ifood") throw new Error("A tela Cardápio > PDV do iFood foi fechada.");
       throw new Error(pageType === "catalog" ? "A tela Catálogo foi fechada." : "A tela Edição de complementos foi fechada.");
     }
 
-    const changes = matches.map((match) => ({ itemId: match.targetId, code: match.code, expectedName: match.targetName, expectedParent: match.targetParent }));
+    const changes = matches.map((match) => ({
+      itemId: match.targetId,
+      code: match.code,
+      expectedName: match.targetName,
+      expectedParent: match.targetParent,
+      inputId: match.inputId || "",
+      itemid: match.itemid || "",
+      optionid: match.optionid || ""
+    }));
+    if (pageType === "ifood") {
+      const payload = { pageType, storeName: plan.storeName, changes };
+      const applied = await send(tabId, { type: "CPLUG_IFOOD_APPLY", payload });
+      if (applied.applied !== changes.length) throw new Error("Nem todos os campos foram aplicados no iFood.");
+      await waitForVerifiedScan(tabId, matches, 45_000);
+      return;
+    }
     const payload = { pageType, storeId: plan.storeId, storeName: plan.storeName, changes };
     const staged = await send(tabId, { type: "CPLUG_UP_STAGE", payload });
     if (staged.staged !== changes.length) throw new Error("Nem todos os campos puderam ser preparados. Nada foi salvo nesta tela.");
@@ -476,7 +501,7 @@
     try {
       response = await chrome.tabs.sendMessage(tabId, message);
     } catch {
-      throw new Error("Atualize as telas Catálogo e Edição de complementos e faça uma nova análise.");
+      throw new Error(plan.platform === "ifood" ? "Atualize a tela Cardápio > PDV do iFood e faça uma nova análise." : "Atualize as telas Catálogo e Edição de complementos e faça uma nova análise.");
     }
     if (!response?.ok) throw new Error(response?.error || "O portal bloqueou a alteração.");
     return response.data;
@@ -486,7 +511,7 @@
     const started = Date.now();
     while (Date.now() - started < timeout) {
       try {
-        const response = await chrome.tabs.sendMessage(tabId, { type: "CPLUG_UP_SCAN" });
+        const response = await chrome.tabs.sendMessage(tabId, { type: plan.platform === "ifood" ? "CPLUG_IFOOD_SCAN" : "CPLUG_UP_SCAN" });
         if (response?.ok) {
           const scan = response.data;
           if (plan.storeId && scan.storeId && String(scan.storeId) !== String(plan.storeId)) {
@@ -508,7 +533,7 @@
 
   function exportCsv() {
     if (!plan) return;
-    const lines = [["Tipo", "Produto pai UP", "Item na UP", "Correspondência no Excel", "Produto pai no Excel", "Código atual", "Novo código", "Resultado", "Origem das opções", "Aviso"].join(";")];
+    const lines = [["Tipo", "Produto pai no destino", "Item no destino", "Correspondência no Excel", "Produto pai no Excel", "Código atual", "Novo código", "Resultado", "Origem das opções", "Aviso"].join(";")];
     for (const match of plan.matches) {
       lines.push([
         match.type === "parent" ? "Produto pai" : "Complemento",

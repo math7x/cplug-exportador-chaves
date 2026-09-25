@@ -27,7 +27,7 @@
 </head>
 <body>
   <h1>CPlug PDV Sync</h1>
-  <p class="sub">Casa as chaves do ConnectPlug com o catálogo da UP Tecnologias e revisa antes de aplicar.</p>
+  <p class="sub">Casa as chaves do ConnectPlug com o catálogo do Alloy/UP ou iFood e revisa antes de aplicar.</p>
 
   <div class="step">
     <label>1. Planilha exportada do ConnectPlug (.xlsx)</label>
@@ -38,9 +38,18 @@
   <div class="divider"></div>
 
   <div class="step">
-    <label>2. Abra Catálogo e Edição de complementos na mesma loja</label>
+    <label>2. Plataforma de destino</label>
+    <select id="platformSelect" style="width:100%;padding:8px;border-radius:8px;border:1px solid #3a3d44;background:#24262b;color:#e9e9ec;font-size:13px;">
+      <option value="alloy">Alloy / UP Tecnologias</option>
+      <option value="ifood">iFood</option>
+    </select>
+    <div id="platformHint" class="hint">No Alloy deixe abertas as duas telas. No iFood deixe aberta a tela Cardápio &gt; PDV.</div>
+  </div>
+
+  <div class="step">
+    <label id="openStepLabel">3. Abra a plataforma e faça a leitura</label>
     <button id="btnStart" disabled>Verificar catálogo e sugerir códigos</button>
-    <button id="btnPages" type="button">Abrir as duas telas necessárias</button>
+    <button id="btnPages" type="button">Abrir telas do Alloy</button>
     <div class="hint">Nada é escrito nesta etapa — só é feita uma leitura e um relatório de sugestões para você revisar.</div>
   </div>
 
