@@ -1,0 +1,3 @@
+﻿Extensão - copiar códigos PDV do ConnectPlug para Alloy e iFood
+
+Extrai chaves de integração de produtos e complementos do ConnectPlug, compara com os cadastros do Alloy/UP ou iFood e aplica os códigos PDV escolhidos após revisão.

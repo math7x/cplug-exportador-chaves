@@ -40,7 +40,7 @@ Assim, a planilha não substitui o catálogo da plataforma: a revisão sempre pa
 1. Abra `chrome://extensions` ou `brave://extensions`.
 2. Ative o **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação**.
-4. Selecione a pasta `EXTENSÃO CBUG CADASTRO`.
+4. Selecione a pasta `Extensão - copiar códigos PDV do ConnectPlug para Alloy e iFood`.
 5. Ao atualizar uma versão já carregada, clique no botão de recarregar da extensão e atualize as páginas abertas.
 
 ## 1. Exportar no ConnectPlug
